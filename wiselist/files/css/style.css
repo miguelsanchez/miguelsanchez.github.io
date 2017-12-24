@@ -1,0 +1,237 @@
+* {
+	margin: 0;
+	padding: 0;
+	border:none;
+}
+
+@font-face{font-family:'simplon';src:url("../fonts/Simplon_BP_Regular_1.otf")}
+@font-face{font-family:'simplon-light';src:url("../fonts/Simplon_BP_Light_1.otf")}
+
+a 
+{
+	text-decoration: none;
+}
+
+body {
+	font-size: 62.5%;
+	font-family: 'simplon', Helvetica, sans-serif;
+	background-color:#FFF;
+}
+
+p.page1 {
+	font-size: 2.9em;
+	letter-spacing:normal;
+	line-height: 130%;
+	margin-bottom: 15px;
+	font-family: 'simplon-light', Helvetica, sans-serif;
+}
+
+p.pageTitle {
+	font-size: 2.6em;
+	letter-spacing:normal;
+	line-height: 130%;
+	margin-bottom: 15px;
+	font-family: 'simplon', Helvetica, sans-serif
+}
+
+p.pageText {
+	font-size: 1.5em;
+	letter-spacing:normal;
+	line-height: 140%;
+	font-family: 'simplon-light', Helvetica, sans-serif;
+	color: #AAA;
+}
+
+#header 
+{
+	width: auto;
+	height:60px;
+	background-color: #fff;
+	font-size: 15px;
+}
+
+#header a:link,
+#header a:visited {
+	text-decoration: none;
+	color:#000;
+}
+#header a:hover {
+	text-decoration: none;
+	color:#00D9D9;
+}
+
+#header li{list-style-type:none;display:block;float:left;margin:0px;padding:0px;vertical-align:bottom;line-height: 130%}
+#header ul{padding:0px;margin:0px;margin-top:25px}
+#header ul li{font-family:'simplon', serif;font-size:10pt;letter-spacing:normal;text-transform:none;color:#000}
+#header ul li+li{padding-left:0.9em}
+#header ul li+li:before{content:'·';padding-right:0.5em;color:#000}
+#header ul li+li{padding-left:0.9em}
+
+#logo
+{
+	float:left;
+	padding: 22px 35px;
+}
+
+#socialBlock
+{
+	float:right; padding-right:15px; padding-top:25px;
+}
+.socialLink
+{
+	padding-right:12px; 
+}
+
+.page-div
+{
+	background-color: #FFF;
+	width:1200px;
+	height:100%;
+}
+
+#appStore
+{
+	float:left;
+	background-image: url("../img/appstore_sprite.png");
+	background-repeat : no-repeat;
+	height: 55px;
+	width: 155px;
+	display: block;
+	padding-left:350px;
+	padding-top:20px;
+}
+
+#appStore
+{
+	background-position: left top;
+}
+
+#appStore:hover{
+    background-position: left -55px;
+}
+
+#copyright{
+    position:absolute;
+    right:10px;
+    bottom:10px;
+    font-size:1.25em;
+    color:#AAA;
+}
+
+#copyright a:link,
+#copyright a:visited {
+	text-decoration: none;
+	color:#666;
+}
+
+#copyright a:hover {
+	color:#00D9D9;
+}
+
+
+#page-wrap {
+	width: 430px;
+	margin: 0 auto;
+	min-height: 150px;
+	height: 200px;
+}
+
+
+#page-wrap a:link,
+#page-wrap a:visited,
+#page-wrap a:hover {
+	text-decoration: none;
+	color:#666;
+	font-weight:bold;
+	font-size:12px;
+}
+	
+
+/*
+	Scroll Content CSS	
+*/
+
+/* the CSS for Smooth Div Scroll */
+div.scrollWrapper
+{
+	position: relative;
+	overflow: hidden;
+	width: 100%;
+	height: 100%;
+}
+
+div.scrollableArea
+{
+	position: relative;
+	width: auto;
+	height: 100%;
+}
+
+/* CSS for my specific scrolling content */
+
+#makeMeScrollable
+{
+	width:100%;
+	height: 740px;
+	position: relative;
+}
+
+#makeMeScrollable div.scrollableArea *
+{
+	position: relative;
+	display: block;
+	float: left;
+	margin: 0;
+	padding: 0;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-o-user-select: none;
+}
+
+div.scrollContentHotSpotLeft {
+	min-width: 75px;
+	width: 10%;
+	height: 25%;
+	top: 37%;
+	background-repeat: repeat;
+	background-position: center center;
+	position: absolute;
+	z-index: 200;
+	left: 0;
+	cursor: pointer;
+}
+
+div.scrollContentHotSpotRight {
+	min-width: 75px;
+	width: 10%;
+	height: 25%;
+	top: 37%;
+	background-repeat: repeat;
+	background-position: center center;
+	position: absolute;
+	z-index: 200;
+	right: 0;
+	cursor: pointer;
+}
+
+div.scrollContentHotSpotRight:hover,
+div.scrollContentHotSpotLeft:hover
+{
+	background-color: #EEE;
+	opacity: 0.25;
+}
+
+
+div.scrollContentHotSpotLeftVisible
+{
+	background-image: url(../img/arrow_left.png);
+	background-repeat: no-repeat;
+}
+
+
+div.scrollContentHotSpotRightVisible
+{
+	background-image: url(../img/arrow_right.png);
+	background-repeat: no-repeat;
+}
