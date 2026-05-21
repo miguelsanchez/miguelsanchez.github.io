@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Puntos Calientes — La Roqueta, Valencia</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  #topbar {
+    background: #1F4E79; color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px; flex-shrink: 0; gap: 12px;
+  }
+  #topbar h1 { font-size: 15px; font-weight: bold; }
+  #topbar p  { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  #edit-btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4);
+    color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 13px;
+    cursor: pointer; white-space: nowrap; transition: background 0.15s; flex-shrink: 0;
+  }
+  #edit-btn:hover { background: rgba(255,255,255,0.25); }
+  #edit-btn.active { background: #E07B00; border-color: #E07B00; }
+
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #fff;
+    display: flex; flex-direction: column;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.12); z-index: 1000;
+    overflow-y: auto;
+  }
+
+  .section { padding: 12px 14px; border-bottom: 1px solid #eee; }
+  .section h2 { font-size: 11px; font-weight: bold; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+
+  .filter-btn {
+    display: flex; align-items: center; gap: 7px;
+    width: 100%; padding: 7px 8px; margin-bottom: 5px;
+    border: 2px solid transparent; border-radius: 5px;
+    background: #f7f7f7; cursor: pointer; font-size: 12px;
+    text-align: left; transition: opacity 0.15s;
+  }
+  .filter-btn:not(.active) { opacity: 0.4; }
+  .filter-btn.active { background: #fff; }
+  .filter-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+  .filter-count { margin-left: auto; font-size: 11px; font-weight: bold;
+    background: #eee; padding: 1px 6px; border-radius: 10px; color: #555; }
+
+  .cat-gorrillas   { background: #C00000; }
+  .cat-botellon    { background: #E07B00; }
+  .cat-proyectos   { background: #2E75B6; }
+  .cat-contenedores{ background: #7B4A1E; }
+  .cat-propuestas  { background: #1A6B3C; }
+
+  .btn-gorrillas   { border-color: #C00000; }
+  .btn-botellon    { border-color: #E07B00; }
+  .btn-proyectos   { border-color: #2E75B6; }
+  .btn-contenedores{ border-color: #7B4A1E; }
+  .btn-propuestas  { border-color: #1A6B3C; }
+
+  .estado-tag { display:inline-block; font-size:11px; font-weight:bold; padding:2px 7px; border-radius:10px; color:#fff; }
+  .tag-urgente  { background:#C00000; }
+  .tag-activo   { background:#E07B00; }
+  .tag-pendiente{ background:#2E75B6; }
+  .tag-propuesto{ background:#1A6B3C; }
+
+  #info-panel { padding: 12px 14px; flex: 1; }
+  #info-default { font-size: 12px; color: #aaa; font-style: italic; }
+  #info-title { font-size: 13px; font-weight: bold; color: #1F4E79; margin-bottom: 5px; }
+  #info-desc  { font-size: 12px; color: #333; line-height: 1.5; margin-top: 7px; }
+
+  /* EDIT MODE */
+  #edit-panel {
+    display: none; background: #FFF4E5;
+    border-top: 2px solid #E07B00; padding: 12px 14px;
+  }
+  #edit-panel h2 { font-size: 11px; font-weight: bold; color: #5C3A00; text-transform: uppercase; margin-bottom: 8px; }
+  #edit-panel p  { font-size: 11px; color: #5C3A00; margin-bottom: 8px; line-height: 1.4; }
+  #copy-btn {
+    width: 100%; padding: 8px; background: #1F4E79; color: #fff;
+    border: none; border-radius: 5px; font-size: 12px; font-weight: bold;
+    cursor: pointer;
+  }
+  #copy-btn:hover { background: #2E75B6; }
+  #copy-feedback { font-size: 11px; color: #1A6B3C; font-weight: bold; margin-top: 5px; display: none; }
+
+  #map { flex: 1; }
+
+  /* punto list en edición */
+  #punto-list { display: none; }
+  #punto-list.visible { display: block; }
+  .punto-item { padding: 6px 14px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; align-items: flex-start; gap: 7px; }
+  .punto-item:hover { background: #f5f5f5; }
+  .punto-item.selected { background: #EBF3FB; }
+  .punto-num { font-size: 10px; font-weight: bold; color: #fff; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .punto-info-s { flex: 1; min-width: 0; }
+  .punto-name { font-size: 11px; font-weight: bold; color: #1F4E79; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .punto-coords { font-size: 10px; color: #999; font-family: monospace; }
+  .punto-coords.changed { color: #1A6B3C; font-weight: bold; }
+
+  .leaflet-popup-content-wrapper { border-radius: 8px; max-width: 260px; }
+  .popup-title { font-size: 13px; font-weight: bold; color: #1F4E79; margin-bottom: 5px; }
+  .popup-cat   { font-size: 11px; font-weight: bold; margin-bottom: 5px; }
+  .popup-desc  { font-size: 12px; color: #333; line-height: 1.4; margin-bottom: 7px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div>
+    <h1>🗺 Puntos Calientes — Barrio de La Roqueta</h1>
+    <p>Associació Veïnal La Roqueta · Mayo 2026</p>
+  </div>
+  <button id="edit-btn" onclick="toggleEdit()" style="display:none">✏️ Ajustar posiciones</button>
+  <button id="perimeter-btn" onclick="copiarPerimetro()" style="display:none">📐 Copiar perímetro</button>
+  <span id="perimeter-feedback" style="font-size:12px;color:#90EE90;display:none;">✓ Copiado</span>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+
+    <div class="section">
+      <h2>Filtrar por categoría</h2>
+      <button class="filter-btn btn-gorrillas active" onclick="toggleLayer('gorrillas',this)">
+        <span class="filter-dot cat-gorrillas"></span> Gorrillas / Inseguridad
+        <span class="filter-count" id="cnt-gorrillas"></span>
+      </button>
+      <button class="filter-btn btn-botellon active" onclick="toggleLayer('botellon',this)">
+        <span class="filter-dot cat-botellon"></span> Botellón e incivismo
+        <span class="filter-count" id="cnt-botellon"></span>
+      </button>
+      <button class="filter-btn btn-proyectos active" onclick="toggleLayer('proyectos',this)">
+        <span class="filter-dot cat-proyectos"></span> Proyectos pendientes
+        <span class="filter-count" id="cnt-proyectos"></span>
+      </button>
+      <button class="filter-btn btn-contenedores active" onclick="toggleLayer('contenedores',this)">
+        <span class="filter-dot cat-contenedores"></span> Contenedores problemáticos
+        <span class="filter-count" id="cnt-contenedores"></span>
+      </button>
+      <button class="filter-btn btn-propuestas active" onclick="toggleLayer('propuestas',this)">
+        <span class="filter-dot cat-propuestas"></span> Propuestas de mejora
+        <span class="filter-count" id="cnt-propuestas"></span>
+      </button>
+    </div>
+
+
+    <div id="info-panel">
+      <div id="info-default">Haz clic en un punto para ver sus detalles.</div>
+      <div id="info-content" style="display:none">
+        <div id="info-title"></div>
+        <div id="info-tag"></div>
+        <div id="info-desc"></div>
+      </div>
+    </div>
+
+    <!-- LISTA EN MODO EDICIÓN -->
+    <div id="punto-list"></div>
+
+    <!-- PANEL EDICIÓN -->
+    <div id="edit-panel">
+      <h2>✏️ Modo edición activo</h2>
+      <p>Arrastra los marcadores a su posición correcta. Los modificados aparecen en verde en la lista.</p>
+      <button id="copy-btn" onclick="copiarCoords()">📋 Copiar coordenadas</button>
+      <div id="copy-feedback">✓ ¡Copiado! Pégalo en el chat.</div>
+    </div>
+
+    <div style="padding:8px 14px;font-size:10px;color:#bbb;border-top:1px solid #eee;">
+      Base: OpenStreetMap · Coordenadas aproximadas
+    </div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script>
+const map = L.map('map').setView([39.4655, -0.3800], 17);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19,
+}).addTo(map);
+
+const CAT_COLOR = {
+  gorrillas:    '#C00000',
+  botellon:     '#E07B00',
+  proyectos:    '#2E75B6',
+  contenedores: '#7B4A1E',
+  propuestas:   '#1A6B3C',
+};
+const CAT_LABEL = {
+  gorrillas:    'Gorrillas / Inseguridad directa',
+  botellon:     'Botellón e incivismo',
+  proyectos:    'Proyecto pendiente',
+  contenedores: 'Contenedores problemáticos',
+  propuestas:   'Propuesta de mejora',
+};
+const ESTADO_CLASS = { urgente:'tag-urgente', activo:'tag-activo', pendiente:'tag-pendiente', propuesto:'tag-propuesto' };
+const ESTADO_LABEL = { urgente:'🔴 Urgente', activo:'🟠 Activo', pendiente:'🔵 Pendiente', propuesto:'🟢 Propuesto' };
+
+const PUNTOS = [
+  // ── ROJOS: Gorrillas / Inseguridad ─────────────────────────
+  {
+    cat:'gorrillas', lat:39.46625, lng:-0.37938, radio:22,
+    titulo:'Convento Jerusalem / Matemático Marzal — foco principal',
+    desc:'Concentración máxima de gorrillas. Hasta 15 individuos simultáneos documentados. Intimidación a conductores, peleas, traspaso de sustancias. Punto más caliente del barrio. 9 incidentes con vídeo y fotografías en mayo 2026.',
+    estado:'urgente',
+  },
+  {
+    cat:'gorrillas', lat:39.4647, lng:-0.37891, radio:14,
+    titulo:'Calle Bailén — zona azul conflictiva',
+    desc:'Alta rotación de zona azul que alimenta la actividad de gorrillas. La AVR propone conversión a zona naranja (como en C/ Alicante-Castellón).',
+    estado:'urgente',
+  },
+  {
+    cat:'gorrillas', lat:39.46435, lng:-0.38056, radio:12,
+    titulo:'GV Ramón y Cajal — borde norte',
+    desc:'Zona de desbordamiento de la actividad de gorrillas hacia la Gran Vía. Acceso a la Estación del Norte, alta rotación de vehículos.',
+    estado:'urgente',
+  },
+  {
+    cat:'gorrillas', lat:39.46657, lng:-0.37999, radio:10,
+    titulo:'Farmacia Convento Jerusalem 22',
+    desc:'Entradas reiteradas solicitando tramadol/pregabalina. Reportado formalmente por la farmacia a la AVR.',
+    estado:'urgente',
+  },
+  {
+    cat:'gorrillas', lat:39.46593, lng:-0.37972, radio:10,
+    titulo:'Centro de Salud Auxiliar',
+    desc:'Agresiones físicas e irrupciones exigiendo tramadol/pregabalina. Obligó a cerrar la puerta por las tardes.',
+    estado:'urgente',
+  },
+  // ── NARANJAS: Botellón, incivismo, compra-venta ─────────────
+  {
+    cat:'botellon', lat:39.4647, lng:-0.38035, radio:14,
+    titulo:'Sala Jerusalem',
+    desc:'Foco de incivismo y problemas de convivencia asociados al local. Concentración de personas en el exterior en horario nocturno.',
+    estado:'activo',
+  },
+  {
+    cat:'botellon', lat:39.46636, lng:-0.38101, radio:13,
+    titulo:'Indiana',
+    desc:'Foco de incivismo nocturno y actividad irregular en el entorno. Compra-venta y problemas de convivencia.',
+    estado:'activo',
+  },
+  {
+    cat:'botellon', lat:39.46444, lng:-0.3796, radio:16,
+    titulo:'Plaza del INSS — Calle Pelayo',
+    desc:'Botellón recurrente. El 16/5/2026 la Policía Local identificó a un grupo y se marchó sin retirar la bebida. Fenómeno cíclico con picos estacionales.',
+    estado:'activo',
+  },
+  {
+    cat:'botellon', lat:39.46686, lng:-0.38158, radio:15,
+    titulo:'Calle Troya / Cash Converters',
+    desc:'Conflictos y conductas antisociales PERMANENTES (no cíclicos). Sin plan específico del Ayuntamiento. Solicitado formalmente en reuniones con Carbonell.',
+    estado:'urgente',
+  },
+  // ── AZULES: Proyectos pendientes ────────────────────────────
+  {
+    cat:'proyectos', lat:39.46793, lng:-0.38196, radio:18,
+    titulo:'Calle Jesús — 41 meses sin licitar',
+    desc:'Votado en DecidimVLC 2022 con 18.000€ asignados. Respuesta oficial abril 2026: "NO se ha realizado ninguna actuación". Propuesta de viabilidad "en revisión" desde oct. 2023. Obras de canalizaciones en curso sin coordinación.',
+    estado:'urgente',
+  },
+  {
+    cat:'proyectos', lat:39.46623, lng:-0.38032, radio:13,
+    titulo:'Calle Estrella — Entorno mercado (prop. 7068)',
+    desc:'Propuesta ciudadana 7068: mejora del entorno del mercado en Calle Estrella. Pendiente de ejecución.',
+    estado:'pendiente',
+  },
+  {
+    cat:'proyectos', lat:39.46525, lng:-0.38091, radio:13,
+    titulo:'Estrella con Ermita — Renaturalización entorno ficus (prop. 7296)',
+    desc:'Propuesta ciudadana 7296: renaturalización del entorno del ficus histórico en la esquina de Calle Estrella con Ermita.',
+    estado:'pendiente',
+  },
+  {
+    cat:'proyectos', lat:39.46695, lng:-0.37931, radio:20,
+    titulo:'Zona PREP — actuaciones pendientes',
+    desc:'El PREP propone pacificación del tráfico, ampliación de aceras y arbolado. Supeditado a proyecto de Escalera de Color / San Vicente sin fecha de licitación. Respuesta técnica: marzo 2025.',
+    estado:'pendiente',
+  },
+  // ── MARRÓN: Contenedores ─────────────────────────────────────
+  {
+    cat:'contenedores', lat:39.4661, lng:-0.3807, radio:14,
+    titulo:'Contenedores bajo edificios históricos protegidos',
+    desc:'Baterías de hasta 6 contenedores bajo balcones de edificios históricos (+110 años). Incendios con daños en fachadas. Zonas convertidas en urinarios improvisados. Más de 18 expedientes sin mejora efectiva.',
+    estado:'urgente',
+  },
+  // ── VERDES: Propuestas de mejora ────────────────────────────
+  {
+    cat:'propuestas', lat:39.46666, lng:-0.37923, radio:22,
+    titulo:'Zona verde residente propuesta (M-04 CPTED)',
+    desc:'Medida de Fase I del Informe CPTED: zona verde residente en el entorno Convento Jerusalem / Matemático Marzal. "La medida más efectiva contra los gorrillas, al eliminar la oportunidad económica." Avalado por PN y Delegada del Gobierno.',
+    estado:'propuesto',
+  },
+  {
+    cat:'propuestas', lat:39.4667, lng:-0.37954, radio:16,
+    titulo:'Rehabilitación Plaza Matemático Marzal (M-10 CPTED)',
+    desc:'Medida de Fase II: rehabilitación integral de la plaza con zonas verdes, juegos infantiles y zona de descanso. Alineada con el PREP y el Pla Verd de Valencia.',
+    estado:'propuesto',
+  },
+  {
+    cat:'propuestas', lat:39.46792, lng:-0.38, radio:14,
+    titulo:'Arbolado de alineación viario (M-08 CPTED)',
+    desc:'Plan de arbolado en todo el viario. La Roqueta designada zona prioritaria en el Pla Verd i de la Biodiversitat de Valencia.',
+    estado:'propuesto',
+  },
+  {
+    cat:'propuestas', lat:39.46955, lng:-0.37713, radio:14,
+    titulo:'Mesa de Seguridad de Proximidad (M-34 CPTED)',
+    desc:'Propuesta de Fase I: mesa trimestral con Policía Local, CNP, Servicios Sociales, AVR, comerciantes y centros educativos.',
+    estado:'propuesto',
+  },
+  {
+    cat:'propuestas', lat:39.46533, lng:-0.37865, radio:13,
+    titulo:'Conversión zona azul → naranja (Bailén / Vives Liern)',
+    desc:'Propuesta AVR: conversión de zona azul a naranja en Bailén y Vives Liern. Traslado de plazas azules a Arrancapins y entorno Alicante/Castellón.',
+    estado:'propuesto',
+  },
+  {
+    cat:'propuestas', lat:39.46772, lng:-0.38143, radio:13,
+    titulo:'Pare Jofré / Cervantes — maceteros en calle peatonal',
+    desc:'Propuesta de colocación de maceteros en la calle peatonal Pare Jofré / Cervantes, reutilizando los maceteros de la Plaza del Ayuntamiento. Mejora del espacio público y renaturalización del viario peatonal.',
+    estado:'propuesto',
+  },
+  {
+    cat:'propuestas', lat:39.46432, lng:-0.37991, radio:12,
+    titulo:'Vives Liern — ordenación tránsito día de mercado',
+    desc:'Propuesta de mejora del tránsito en Vives Liern: zona verde o naranja garantizada para residentes el día de mercado (martes).',
+    estado:'propuesto',
+  },
+];
+
+// ── Estado ────────────────────────────────────────────────────
+const coords  = PUNTOS.map(p => ({ lat: p.lat, lng: p.lng }));
+const changed = new Set();
+const markers = [];
+let editMode  = false;
+
+// ── Capas por categoría ───────────────────────────────────────
+const layers  = {};
+['gorrillas','botellon','proyectos','contenedores','propuestas'].forEach(c => {
+  layers[c] = L.layerGroup().addTo(map);
+});
+const counts = { gorrillas:0, botellon:0, proyectos:0, contenedores:0, propuestas:0 };
+
+// ── Construcción de marcadores ────────────────────────────────
+const puntoList = document.getElementById('punto-list');
+
+PUNTOS.forEach((p, i) => {
+  counts[p.cat]++;
+  const color = CAT_COLOR[p.cat];
+
+  function makeIcon(draggable) {
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        width:${p.radio*2}px;height:${p.radio*2}px;
+        background:${color};border:3px solid #fff;
+        border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);
+        cursor:${draggable?'grab':'pointer'};
+        display:flex;align-items:center;justify-content:center;
+        font-size:${Math.max(9,p.radio-5)}px;color:#fff;font-weight:bold;
+      ">${i+1}</div>`,
+      iconSize: [p.radio*2, p.radio*2],
+      iconAnchor: [p.radio, p.radio],
+    });
+  }
+
+  const marker = L.marker([p.lat, p.lng], { icon: makeIcon(false), draggable: false });
+
+  const popupHTML = `
+    <div class="popup-title">${i+1}. ${p.titulo}</div>
+    <div class="popup-cat" style="color:${color}">${CAT_LABEL[p.cat]}</div>
+    <div class="popup-desc">${p.desc}</div>
+    <span class="estado-tag ${ESTADO_CLASS[p.estado]}">${ESTADO_LABEL[p.estado]}</span>
+  `;
+  marker.bindPopup(popupHTML, { maxWidth: 270 });
+
+  marker.on('click', () => {
+    if (editMode) return;
+    document.getElementById('info-default').style.display = 'none';
+    document.getElementById('info-content').style.display = 'block';
+    document.getElementById('info-title').textContent = `${i+1}. ${p.titulo}`;
+    document.getElementById('info-tag').innerHTML = `<span class="popup-cat" style="color:${color}">${CAT_LABEL[p.cat]}</span> &nbsp; <span class="estado-tag ${ESTADO_CLASS[p.estado]}">${ESTADO_LABEL[p.estado]}</span>`;
+    document.getElementById('info-desc').textContent = p.desc;
+  });
+
+  marker.on('dragend', e => {
+    const pos = e.target.getLatLng();
+    coords[i].lat = parseFloat(pos.lat.toFixed(5));
+    coords[i].lng = parseFloat(pos.lng.toFixed(5));
+    changed.add(i);
+    const el = document.getElementById(`coords-${i}`);
+    if (el) { el.textContent = `${coords[i].lat}, ${coords[i].lng}`; el.className = 'punto-coords changed'; }
+    const item = document.getElementById(`item-${i}`);
+    if (item) { document.querySelectorAll('.punto-item').forEach(x => x.classList.remove('selected')); item.classList.add('selected'); item.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+  });
+
+  layers[p.cat].addLayer(marker);
+  markers.push(marker);
+
+  // Item lista edición
+  const item = document.createElement('div');
+  item.className = 'punto-item'; item.id = `item-${i}`;
+  item.innerHTML = `
+    <div class="punto-num" style="background:${color}">${i+1}</div>
+    <div class="punto-info-s">
+      <div class="punto-name">${p.titulo}</div>
+      <div class="punto-coords" id="coords-${i}">${p.lat}, ${p.lng}</div>
+    </div>`;
+  item.addEventListener('click', () => {
+    map.setView([coords[i].lat, coords[i].lng], 18);
+    markers[i].openPopup();
+    document.querySelectorAll('.punto-item').forEach(x => x.classList.remove('selected'));
+    item.classList.add('selected');
+  });
+  puntoList.appendChild(item);
+});
+
+// Contadores
+Object.keys(counts).forEach(k => {
+  const el = document.getElementById('cnt-'+k); if (el) el.textContent = counts[k];
+});
+
+// ── Filtros ───────────────────────────────────────────────────
+function toggleLayer(cat, btn) {
+  btn.classList.toggle('active');
+  map.hasLayer(layers[cat]) ? map.removeLayer(layers[cat]) : layers[cat].addTo(map);
+}
+
+// ── Modo edición ──────────────────────────────────────────────
+function toggleEdit() {
+  editMode = !editMode;
+  const btn = document.getElementById('edit-btn');
+  const panel = document.getElementById('edit-panel');
+  const list  = document.getElementById('punto-list');
+  const info  = document.getElementById('info-panel');
+
+  btn.classList.toggle('active', editMode);
+  btn.textContent = editMode ? '✅ Salir del editor' : '✏️ Ajustar posiciones';
+  panel.style.display = editMode ? 'block' : 'none';
+  list.classList.toggle('visible', editMode);
+  info.style.display = editMode ? 'none' : 'block';
+
+  markers.forEach((m, i) => {
+    m.dragging[editMode ? 'enable' : 'disable']();
+    if (!editMode) { m.closePopup(); m.closeTooltip(); }
+  });
+}
+
+// ── Exportar perímetro ────────────────────────────────────────
+function copiarPerimetro() {
+  const labels = ['NW', 'NE', 'SE', 'SW'];
+  const txt = 'PERIMETRO:\n' + perimeterCorners.map((c, i) =>
+    `  ${labels[i]}: [${c[0].toFixed(5)}, ${c[1].toFixed(5)}]`
+  ).join('\n');
+  navigator.clipboard.writeText(txt).then(() => {
+    const fb = document.getElementById('perimeter-feedback');
+    fb.style.display = 'inline';
+    setTimeout(() => fb.style.display = 'none', 3000);
+  });
+}
+
+// ── Exportar coordenadas ──────────────────────────────────────
+function copiarCoords() {
+  const txt = PUNTOS.map((p, i) => {
+    const mark = changed.has(i) ? ' ✓' : '';
+    return `${i+1}. ${p.titulo}${mark}\n   lat: ${coords[i].lat}, lng: ${coords[i].lng}`;
+  }).join('\n\n');
+  navigator.clipboard.writeText(txt).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.style.display = 'block';
+    setTimeout(() => fb.style.display = 'none', 3000);
+  });
+}
+
+// ── Perímetro barrio (editable) ───────────────────────────────
+let perimeterCorners = [
+  [39.47049, -0.38361],  // NW
+  [39.46745, -0.37668],  // NE
+  [39.46206, -0.37922],  // SE
+  [39.46892, -0.38450],  // SW
+];
+
+let perimeterPoly = L.polygon(perimeterCorners, {
+  color:'#1F4E79', weight:2, fillOpacity:0.04, dashArray:'6,4'
+}).addTo(map).bindTooltip('Barrio de La Roqueta', { permanent:false, direction:'top' });
+
+const cornerIcon = L.divIcon({
+  className:'',
+  html:`<div style="width:14px;height:14px;background:#1F4E79;border:2px solid #fff;
+    border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,0.5);cursor:move;
+    transform:rotate(45deg)"></div>`,
+  iconSize:[14,14], iconAnchor:[7,7],
+});
+
+const cornerMarkers = perimeterCorners.map((pos, i) => {
+  const m = L.marker(pos, { icon: cornerIcon, draggable: true, zIndexOffset: 2000 }).addTo(map);
+  m.bindTooltip('Arrastra para ajustar el perímetro', { direction:'top', offset:[0,-10] });
+  m.on('drag', () => {
+    perimeterCorners[i] = [m.getLatLng().lat, m.getLatLng().lng];
+    perimeterPoly.setLatLngs(perimeterCorners);
+  });
+  return m;
+});
+
+</script>
+</body>
+</html>
